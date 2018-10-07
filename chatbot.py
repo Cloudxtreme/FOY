@@ -180,12 +180,12 @@ def forward_with_mask(sess, net, states, input_sample, forward_args):
     topn = forward_args['topn']
 
     if relevance <= 0.:
-        # No relevance masking.
+
         prob, states = net.forward_model(sess, states, input_sample)
     else:
-        # states should be a 2-length list: [primary net state, mask net state].
+
         if input_sample == mask_reset_token:
-            # Reset the mask probs when reaching mask_reset_token (newline).
+         
             states[1] = initial_state(net, sess)
         primary_prob, states[0] = net.forward_model(sess, states[0], input_sample)
         primary_prob /= sum(primary_prob)
@@ -194,11 +194,11 @@ def forward_with_mask(sess, net, states, input_sample, forward_args):
         prob = np.exp(np.log(primary_prob) - relevance * np.log(mask_prob))
    
     prob[forbidden_token] = 0
-    # Normalize probabilities so they sum to 1.
+
     prob = prob / sum(prob)
-    # Apply temperature.
+    
     prob = scale_prediction(prob, temperature)
-    # Apply top-n filtering if enabled
+ 
     if topn > 0:
         prob[np.argsort(prob)[:-topn]] = 0
         prob = prob / sum(prob)
@@ -207,9 +207,9 @@ def forward_with_mask(sess, net, states, input_sample, forward_args):
 def beam_search_generator(sess, net, initial_state, initial_sample,
     early_term_token, beam_width, forward_model_fn, forward_args):
     
-    beam_states = [initial_state] # Stores the best activation states
-    beam_outputs = [[initial_sample]] # Stores the best generated output sequences so far.
-    beam_probs = [1.] # Stores the cumulative normalized probabilities of the beams so far.
+    beam_states = [initial_state]
+    beam_outputs = [[initial_sample]]
+    beam_probs = [1.] 
 
     while True:
        
