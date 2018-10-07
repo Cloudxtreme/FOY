@@ -73,8 +73,7 @@ class PartitionedMultiRNNCell(rnn_cell.RNNCell):
 
 def _rnn_state_placeholders(state):
     """Convert RNN state tensors to placeholders, reflecting the same nested tuple structure."""
-    # Adapted from @carlthome's comment:
-    # https://github.com/tensorflow/tensorflow/issues/2838#issuecomment-302019188
+    
     if isinstance(state, tf.contrib.rnn.LSTMStateTuple):
         c, h = state
         c = tf.placeholder(c.dtype, c.shape, c.op.name)
@@ -113,19 +112,11 @@ class Model():
         self.global_epoch_fraction = tf.Variable(0.0, name="global_epoch_fraction", trainable=False)
         self.global_seconds_elapsed = tf.Variable(0.0, name="global_seconds_elapsed", trainable=False)
 
-        # Call tensorflow library tensorflow-master/tensorflow/python/ops/rnn_cell
-        # to create a layer of block_size cells of the specified basic type (RNN/GRU/LSTM).
-        # Use the same rnn_cell library to create a stack of these cells
-        # of num_layers layers. Pass in a python list of these cells. 
-        # cell = rnn_cell.MultiRNNCell([cell_fn(args.block_size) for _ in range(args.num_layers)])
-        # cell = MyMultiRNNCell([cell_fn(args.block_size) for _ in range(args.num_layers)])
+      
         cell = PartitionedMultiRNNCell(cell_fn, partitions=args.num_blocks,
             partition_size=args.block_size, layers=args.num_layers)
 
-        # Create a TF placeholder node of 32-bit ints (NOT floats!),
-        # of shape batch_size x seq_length. This shape matches the batches
-        # (listed in x_batches and y_batches) constructed in create_batches in utils.py.
-        # input_data will receive input batches.
+      
         self.input_data = tf.placeholder(tf.int32, [args.batch_size, args.seq_length])
 
         self.zero_state = cell.zero_state(args.batch_size, tf.float32)
