@@ -12,25 +12,7 @@ import numpy as np
 class PartitionedMultiRNNCell(rnn_cell.RNNCell):
     """RNN cell composed sequentially of multiple simple cells."""
 
-    # Diagramn of a PartitionedMultiRNNCell net with three layers and three partitions per layer.
-    # Each brick shape is a partition, which comprises one RNNCell of size partition_size.
-    # The two tilde (~) characters indicate wrapping (i.e. the two halves are a single partition).
-    # Like laying bricks, each layer is offset by half a partition width so that influence spreads
-    # horizontally through subsequent layers, while avoiding the quadratic resource scaling of fully
-    # connected layers with respect to layer width.
-
-    #        output
-    #  //////// \\\\\\\\
-    # -------------------
-    # |     |     |     |
-    # -------------------
-    # ~  |     |     |  ~
-    # -------------------
-    # |     |     |     |
-    # -------------------
-    #  \\\\\\\\ ////////
-    #        input
-
+   
 
     def __init__(self, cell_fn, partition_size=128, partitions=1, layers=2):
         """Create a RNN cell composed sequentially of a number of RNNCells.
