@@ -10,29 +10,10 @@ OUTPUT_FILE = "output.bz2"
 REPORT_FILE = "RC_report.txt"
 
 def main():
-	assert sys.version_info >= (3, 3), \
-    "Must be run in Python 3.3 or later. You are running {}".format(sys.version)
+	assert sys.version_info >= (3.5),
+    "Error Occured!!!!!!{}".format(sys.version)
     
 	parser = argparse.ArgumentParser()
-	parser.add_argument('--input_file', type=str, default='reddit_data',
-					   help='data file or directory containing bz2 archive of json reddit data')
-	parser.add_argument('--logdir', type=str, default='output/',
-					   help='directory to save the output and report')
-	parser.add_argument('--config_file', type=str, default='parser_config_standard.json',
-					   help='json parameters for parsing')
-	parser.add_argument('--comment_cache_size', type=int, default=1e7,
-					   help='max number of comments to cache in memory before flushing')
-	parser.add_argument('--output_file_size', type=int, default=2e8,
-					   help='max size of each output file (give or take one conversation)')
-	parser.add_argument('--print_every', type=int, default=1000,
-					   help='print an update to the screen this often')
-	parser.add_argument('--min_conversation_length', type=int, default=5,
-					   help='conversations must have at least this many comments for inclusion')
-	parser.add_argument('--print_subreddit', type=str2bool, nargs='?',
-                       const=False, default=False,
-					   help='set to true to print the name of the subreddit before each conversation'
-					   + ' to facilitate more convenient blacklisting in the config json file.'
-					   + ' (Remember to disable before constructing training data.)')
 	args = parser.parse_args()
 	parse_main(args)
 
@@ -52,7 +33,7 @@ class RedditComment(object):
 			+ "Comment was as follows: " + json_object)
 		self.author = json_object['author']
 		parent_id = json_object['parent_id']
-		# t1_ prefixes indicate comments. t3_ prefix would indicate a link submission.
+		
 		if parent_id.startswith('t1_'): self.parent_id = parent_id
 		else: self.parent_id = None
 		self.child_id = None
@@ -113,7 +94,7 @@ def read_comments_into_cache(raw_data, comment_dict, print_every, print_subreddi
 					print("\rCached {:,d} comments".format(cache_count), end='')
 					sys.stdout.flush()
 				if cache_count > comment_cache_size: break
-	else: # raw_data has been exhausted.
+	else:
 		done = True
 	print()
 	return done, i
@@ -176,17 +157,16 @@ def post_qualifies(json_object, subreddit_blacklist,
 		for substring in substring_blacklist:
 			if body.find(substring) >= 0: return False
 	# Preprocess the comment text.
-	body = re.sub('[ \t\n\r]+', ' ', body) # Replace runs of whitespace with a single space.
-	body = re.sub('\^', '', body) # Strip out carets.
-	body = re.sub('\\\\', '', body) # Strip out backslashes.
-	body = re.sub('&lt;', '<', body) # Replace '&lt;' with '<'
-	body = re.sub('&gt;', '>', body) # Replace '&gt;' with '>'
-	body = re.sub('&amp;', '&', body) # Replace '&amp;' with '&'
+	body = re.sub('[ \t\n\r]+', ' ', body) 
+	body = re.sub('\^', '', body)
+	body = re.sub('\\\\', '', body)
+	body = re.sub('&lt;', '<', body)
+	body = re.sub('&gt;', '>', body)
+	body = re.sub('&amp;', '&', body)
 	post_length = len(body)
-	# Check the length again, now that we've preprocessed it.
+
 	if post_length < 4 or post_length > 200: return False
-	json_object['body'] = body # Save our changes
-	# Make sure the ID has the 't1_' prefix because that is how child comments refer to their parents.
+	json_object['body'] = body 
 	if not json_object['id'].startswith('t1_'): json_object['id'] = 't1_' + json_object['id']
 	return True
 
@@ -197,28 +177,26 @@ def process_comment_cache(comment_dict, print_every):
 		if i % print_every == 0:
 			print("\rProcessed {:,d} comments".format(i), end='')
 			sys.stdout.flush()
-		if my_comment.parent_id is not None: # If we're not a top-level post...
-			if my_comment.parent_id in comment_dict: # ...and the parent is in our data set...
+		if my_comment.parent_id is not None: 
+			if my_comment.parent_id in comment_dict:
 				parent = comment_dict[my_comment.parent_id]
-				if parent.child_id is None: # If my parent doesn't already have a child, adopt me!
+				if parent.child_id is None: 
 					parent.child_id = my_id
-				else: # My parent already has a child.
+				else: 
 					parent_previous_child = comment_dict[parent.child_id]
-					if parent.parent_id in comment_dict: # If my grandparent is in our data set...
+					if parent.parent_id in comment_dict: 
 						grandparent = comment_dict[parent.parent_id]
 						if my_comment.author == grandparent.author:
-							# If I share an author with grandparent, adopt me!
+					
 							parent.child_id = my_id
 						elif (parent_previous_child.author != grandparent.author
 							and my_comment.score > parent_previous_child.score):
-							# If the existing child doesn't share an author with grandparent,
-							# higher score prevails.
+							
 							parent.child_id = my_id
 					elif my_comment.score > parent_previous_child.score:
-						# If there's no grandparent, the higher-score child prevails.
+						
 						parent.child_id = my_id
 			else:
-				# Parent IDs that aren't in the data set get de-referenced.
 				my_comment.parent_id = None
 	print()
 
