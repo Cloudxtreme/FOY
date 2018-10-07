@@ -49,9 +49,7 @@ def main():
     train(args)
 
 def train(args):
-    # Create the data_loader object, which loads up all of our batches, vocab dictionary, etc.
-    # from utils.py (and creates them if they don't already exist).
-    # These files go in the data directory.
+  
     data_loader = TextLoader(args.data_dir, args.batch_size, args.seq_length)
     args.vocab_size = data_loader.vocab_size
 
@@ -60,7 +58,7 @@ def train(args):
         print("Creating directory %s" % args.save_dir)
         os.mkdir(args.save_dir)
     elif (os.path.exists(os.path.join(args.save_dir, 'config.pkl'))):
-        # Trained model already exists
+ 
         ckpt = tf.train.get_checkpoint_state(args.save_dir)
         if ckpt and ckpt.model_checkpoint_path:
             with open(os.path.join(args.save_dir, 'config.pkl'), 'rb') as f:
@@ -74,24 +72,23 @@ def train(args):
                     saved_args.model, saved_args.block_size, saved_args.num_blocks, saved_args.num_layers))
                 load_model = True
 
-    # Save all arguments to config.pkl in the save directory -- NOT the data directory.
+   
     with open(os.path.join(args.save_dir, 'config.pkl'), 'wb') as f:
         pickle.dump(args, f)
-    # Save a tuple of the characters list and the vocab dictionary to chars_vocab.pkl in
-    # the save directory -- NOT the data directory.
+ 
     with open(os.path.join(args.save_dir, 'chars_vocab.pkl'), 'wb') as f:
         pickle.dump((data_loader.chars, data_loader.vocab), f)
 
-    # Create the model!
+
     print("Building the model")
     model = Model(args)
     print("Total trainable parameters: {:,d}".format(model.trainable_parameter_count()))
     
-    # Make tensorflow less verbose; filter out info (1+) and warnings (2+) but not errors (3).
+    
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
     config = tf.ConfigProto(log_device_placement=False)
-    #config.gpu_options.allow_growth = True
+
     with tf.Session(config=config) as sess:
         tf.global_variables_initializer().run()
         saver = tf.train.Saver(model.save_variables_list(), max_to_keep=3)
@@ -120,37 +117,27 @@ def train(args):
         avg_steps = 0
         try:
             for e in range(*epoch_range):
-                # e iterates through the training epochs.
-                # Reset the model state, so it does not carry over from the end of the previous epoch.
+               
                 state = sess.run(model.zero_state)
                 batch_range = (initial_batch_step, data_loader.total_batch_count)
                 initial_batch_step = 0
                 for b in range(*batch_range):
                     global_step += 1
                     if global_step % args.decay_steps == 0:
-                        # Set the model.lr element of the model to track
-                        # the appropriately decayed learning rate.
+                      
                         current_learning_rate = sess.run(model.lr)
                         current_learning_rate *= args.decay_rate
                         sess.run(tf.assign(model.lr, current_learning_rate))
                         print("Decayed learning rate to {}".format(current_learning_rate))
                     start = time.time()
-                    # Pull the next batch inputs (x) and targets (y) from the data loader.
+                 
                     x, y = data_loader.next_batch()
 
-                    # feed is a dictionary of variable references and respective values for initialization.
-                    # Initialize the model's input data and target data from the batch,
-                    # and initialize the model state to the final state from the previous batch, so that
-                    # model state is accumulated and carried over between batches.
+                
                     feed = {model.input_data: x, model.targets: y}
                     model.add_state_to_feed_dict(feed, state)
                     
-                    # Run the session! Specifically, tell TensorFlow to compute the graph to calculate
-                    # the values of cost, final state, and the training op.
-                    # Cost is used to monitor progress.
-                    # Final state is used to carry over the state into the next batch.
-                    # Training op is not used, but we want it to be calculated, since that calculation
-                    # is what updates parameter states (i.e. that is where the training happens).
+             
                     train_loss, state, _, summary = sess.run(outputs, feed)
                     elapsed = time.time() - start
                     global_seconds_elapsed += elapsed
@@ -160,16 +147,14 @@ def train(args):
                     print("{:,d} / {:,d} (epoch {:.3f} / {}), loss {:.3f} (avg {:.3f}), {:.3f}s" \
                         .format(b, batch_range[1], e + b / batch_range[1], epoch_range[1],
                             train_loss, avg_loss, elapsed))
-                    # Every save_every batches, save the model to disk.
-                    # By default, only the five most recent checkpoint files are kept.
+                  
                     if (e * batch_range[1] + b + 1) % args.save_every == 0 \
                             or (e == epoch_range[1] - 1 and b == batch_range[1] - 1):
                         save_model(sess, saver, model, args.save_dir, global_step,
                                 data_loader.total_batch_count, global_seconds_elapsed)
         except KeyboardInterrupt:
-            # Introduce a line break after ^C is displayed so save message
-            # is on its own line.
-            print()
+           
+            next();
         finally:
             writer.flush()
             global_step = e * data_loader.total_batch_count + b
